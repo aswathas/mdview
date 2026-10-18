@@ -29,7 +29,8 @@ by running `mdview <path>` from a shell. Plain `.md` is the main use case; Claud
 ### Boundaries
 
 - Rust never parses markdown or jsonl. It reads bytes and reports changes.
-- `md.ts` is pure: `(string) -> string`. No DOM, no Tauri. Directly unit-testable.
+- `md.ts` is pure: `(string, { resolveUrl? }) -> string`. No DOM access, no Tauri import.
+  URL resolution is injected, so tests stay framework-free. Directly unit-testable.
 - `jsonl.ts` is pure: `(string) -> string` (markdown). Feeds `md.ts`.
 - `app.ts` is the only module that knows about Tauri APIs.
 
@@ -59,6 +60,14 @@ by extension: `.jsonl` → transcript, everything else → markdown.
   Zero extra dependency, so no sanitizer library.
 - Fenced code blocks get `highlight.js` with a small common-language set.
 - Non-highlighted languages fall back to plain `<pre><code>`.
+- **Relative URLs are resolved.** The webview page origin is the Tauri asset protocol,
+  so `![](diagram.png)` would fetch from the app origin and 404. After parse, every
+  relative `img[src]` / `a[href]` is resolved against the document's absolute directory
+  and rewritten via `convertFileSrc()` to a `file://` URL. CSP gains
+  `img-src 'self' asset: file: data:` and `media-src` nothing else.
+- Relative `a[href]` to `.md`/`.jsonl` becomes clickable: click loads that document
+  through the normal `open_path` path instead of navigating.
+- Absolute `http(s)://` URLs are left alone and open in the system browser.
 
 ## Transcript transform
 
@@ -91,7 +100,8 @@ persists choice to `localStorage` (`mdview.theme`).
 ## Testing
 
 - `vitest` for `md.ts`: raw-HTML escaping, fenced code → highlighted `<pre><code>`,
-  heading levels, malformed fence.
+  heading levels, malformed fence, relative `img[src]` / `a[href]` passed through
+  `resolveUrl` while `http(s)` URLs are left untouched.
 - `vitest` for `jsonl.ts`: user/assistant/summary mapping, tool_use block, malformed
   line fallback, non-JSONL input fallback.
 - No Rust tests. Rust commands are thin fs wrappers with one error path each.
@@ -102,13 +112,13 @@ In-page find, recent-files sidebar, editing/saving, tabs, PDF/HTML export,
 transcripts from agents other than Claude Code (unknown JSONL shapes fall back to
 raw dump).
 
-Relative-path images (`![](diagram.png)`) will not load: the webview is served from
-the Tauri asset protocol, not the file's directory. Serving the document's own folder
-via `convertFileSrc` is the upgrade if this matters.
-
 ## Known limits
 
 - `highlight.js` bundled grammars add roughly 1 MB to a ~5 MB binary. Trim to core
   languages if size becomes a problem.
 - Single-instance argv forwarding is the only integration point. Agents that cannot
   spawn a process have no way in; a localhost HTTP endpoint would be the upgrade.
+- `convertFileSrc` hands the webview any absolute path the markdown names, with no
+  sandbox. Acceptable for a local viewer the user opens their own files in; would need
+  a root-jail (resolve, then reject anything outside the doc's directory tree) before
+  it could view untrusted transcripts from elsewhere.
