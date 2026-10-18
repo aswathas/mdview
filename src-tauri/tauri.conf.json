@@ -19,7 +19,11 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost file: data:; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost file: data:; style-src 'self' 'unsafe-inline'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
     }
   },
   "bundle": {
