@@ -11,7 +11,10 @@ edition = "2024"
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "mdview_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# rlib only: cdylib and staticlib are for the mobile targets, and on Windows the
+# MinGW linker rejects this crate's export table with "export ordinal too large".
+# The desktop bin links the rlib directly and needs neither.
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
