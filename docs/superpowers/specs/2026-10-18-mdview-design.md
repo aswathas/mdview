@@ -12,8 +12,10 @@ by running `mdview <path>` from a shell. Plain `.md` is the main use case; Claud
 
 - Tauri 2 (Rust shell) + TypeScript + Vite. Vanilla DOM, no UI framework.
 - `marked` for markdown → HTML, `highlight.js` for fenced code blocks.
-- Plugins: `tauri-plugin-single-instance`, `tauri-plugin-dialog`, `tauri-plugin-fs`,
-  `tauri-plugin-notify` (file watching), `tauri-plugin-opener`.
+- Plugins: `tauri-plugin-single-instance` (Rust only, no npm package), `tauri-plugin-dialog`,
+  `tauri-plugin-fs` (file watching, needs its `watch` cargo feature), `tauri-plugin-opener`.
+- The library builds as `crate-type = ["rlib"]`. `cdylib` and `staticlib` are mobile-target
+  requirements, and the MinGW linker rejects this crate's export table on Windows.
 
 ## Architecture
 
@@ -86,7 +88,7 @@ Each `.jsonl` line is a JSON object. Per line:
 
 ## Error handling
 
-- File read failure → inline error panel with path and OS error. Previous document stays
+- File read failure → inline error banner with path and OS error. The previous document stays
   on screen until a successful load replaces it.
 - Unreadable/invalid UTF-8 → lossy decode (`String::from_utf8_lossy` equivalent), still render.
 - Watcher path errors are non-fatal: log and drop the watch.
