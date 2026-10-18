@@ -72,6 +72,17 @@ function assistantBody(content: string | Part[] | undefined): string {
   return blocks.join("\n\n");
 }
 
+// Session bookkeeping, not conversation. A live transcript is ~60% these, and one
+// "Unknown entry" heading per line buries the messages the reader came for.
+const META_TYPES = new Set([
+  "mode",
+  "file-history-snapshot",
+  "attachment",
+  "last-prompt",
+  "atis-latch",
+  "queue-operation",
+]);
+
 function toMarkdown(record: unknown): string | null {
   if (!record || typeof record !== "object" || Array.isArray(record)) return null;
   const { type, summary, message } = record as TranscriptRecord;
@@ -119,6 +130,7 @@ export function transcriptToMarkdown(jsonlText: string): string {
       continue;
     }
     parsedCount += 1;
+    if (META_TYPES.has((parsed as { type?: unknown }).type as string)) continue;
     const block = toMarkdown(parsed);
     blocks.push(
       block === null ? unknownRecord(index + 1, raw) : block,

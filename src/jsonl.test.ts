@@ -135,3 +135,27 @@ describe("fallbacks", () => {
     expect(md).toContain("````");
   });
 });
+
+describe("session bookkeeping", () => {
+  it("drops metadata records instead of rendering them as entries", () => {
+    const md = transcriptToMarkdown(
+      [
+        line({ type: "mode", mode: "normal" }),
+        line({ type: "file-history-snapshot", isSnapshotUpdate: false }),
+        line({ type: "attachment", attachment: { type: "hook_success", stdout: "ok" } }),
+        line({ type: "last-prompt" }),
+        line({ type: "queue-operation" }),
+        line({ type: "atis-latch" }),
+        line({ type: "user", message: { content: "hello" } }),
+      ].join("\n"),
+    );
+    expect(md).toContain("hello");
+    expect(md).not.toContain("Unknown entry");
+    expect(md.split("\n").filter((l) => l.startsWith("## "))).toHaveLength(1);
+  });
+
+  it("still labels a genuinely unmodelled type", () => {
+    const md = transcriptToMarkdown(line({ type: "brand_new_thing", data: 1 }));
+    expect(md).toContain("Unknown entry (type: brand_new_thing)");
+  });
+});
